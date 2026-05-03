@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Ghana School Management"
+version = "1.0.0"
+id = "artifacts/school-mgmt"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18953
+
+[services.development]
+run = "pnpm --filter @workspace/school-mgmt run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/school-mgmt", "run", "build" ]
+publicDir = "artifacts/school-mgmt/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18953"
+BASE_PATH = "/"
