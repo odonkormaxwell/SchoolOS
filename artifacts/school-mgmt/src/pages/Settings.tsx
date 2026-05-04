@@ -15,12 +15,166 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Plus, Trash2, Star, Users, School, Calendar } from "lucide-react";
+import { Save, Plus, Trash2, Star, Users, School, Calendar, Shield, RotateCcw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/lib/auth";
+import {
+  MODULES, ACTIONS, MODULE_LABELS, ROLE_LABELS,
+  DEFAULT_PERMISSIONS, resetPermissions,
+  type AllPerms, type Module, type Action,
+} from "@/lib/permissions";
+
+const EDITABLE_ROLES = ["headteacher", "teacher", "accountant", "student", "parent"] as const;
+
+function PermissionsTab() {
+  const { permissions, setPermissions } = useAuth();
+  const { toast } = useToast();
+  const [selectedRole, setSelectedRole] = useState<string>("teacher");
+  const [localPerms, setLocalPerms] = useState<AllPerms>(() => JSON.parse(JSON.stringify(permissions)));
+
+  function toggle(role: string, mod: Module, action: Action) {
+    if (role === "admin") return;
+    setLocalPerms(prev => {
+      const next: AllPerms = JSON.parse(JSON.stringify(prev));
+      next[role][mod][action] = !next[role][mod][action];
+      if (action === "view" && !next[role][mod][action]) {
+        next[role][mod].create = false;
+        next[role][mod].edit = false;
+        next[role][mod].delete = false;
+      }
+      if (action !== "view" && next[role][mod][action]) {
+        next[role][mod].view = true;
+      }
+      return next;
+    });
+  }
+
+  function handleSave() {
+    setPermissions(localPerms);
+    toast({ title: "Permissions saved", description: "Role permissions have been updated." });
+  }
+
+  function handleReset() {
+    const defaults = resetPermissions();
+    setLocalPerms(JSON.parse(JSON.stringify(defaults)));
+    setPermissions(defaults);
+    toast({ title: "Permissions reset to defaults" });
+  }
+
+  const rolePerms = localPerms[selectedRole];
+  if (!rolePerms) return null;
+
+  const actionLabels: Record<Action, string> = {
+    view: "View",
+    create: "Create",
+    edit: "Edit",
+    delete: "Delete",
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Shield className="h-4 w-4 text-primary" />
+                Role Permissions
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Configure which modules each role can access. Admin always has full access.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleReset}>
+                <RotateCcw className="h-3.5 w-3.5 mr-1.5" /> Reset Defaults
+              </Button>
+              <Button size="sm" onClick={handleSave}>
+                <Save className="h-3.5 w-3.5 mr-1.5" /> Save Permissions
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex gap-2 flex-wrap mb-4">
+            {["admin", ...EDITABLE_ROLES].map(role => (
+              <button
+                key={role}
+                onClick={() => setSelectedRole(role)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium border transition-all ${
+                  selectedRole === role
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                {ROLE_LABELS[role] ?? role}
+                {role === "admin" && (
+                  <span className="ml-1.5 text-[10px] opacity-70">(locked)</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-muted/40 border-b">
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-48">
+                    Module
+                  </th>
+                  {ACTIONS.map(action => (
+                    <th key={action} className="text-center px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider w-24">
+                      {actionLabels[action]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {MODULES.map((mod, idx) => {
+                  const perms = localPerms[selectedRole]?.[mod];
+                  return (
+                    <tr key={mod} className={`border-b last:border-0 ${idx % 2 === 0 ? "bg-background" : "bg-muted/20"}`}>
+                      <td className="px-4 py-3 text-sm font-medium">{MODULE_LABELS[mod]}</td>
+                      {ACTIONS.map(action => {
+                        const checked = perms?.[action] ?? false;
+                        const isAdmin = selectedRole === "admin";
+                        const isDisabled = isAdmin ||
+                          (action !== "view" && !perms?.view);
+                        return (
+                          <td key={action} className="px-3 py-3 text-center">
+                            <label className="inline-flex items-center justify-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={isDisabled}
+                                onChange={() => toggle(selectedRole, mod, action)}
+                                className="h-4 w-4 rounded border-gray-300 text-primary cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed accent-primary"
+                              />
+                            </label>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
+            <Shield className="h-3 w-3" />
+            Changes take effect immediately after saving and affect sidebar visibility and page access.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   const { data: school, isLoading: schoolLoading } = useGetSchoolProfile();
   const updateSchool = useUpdateSchoolProfile();
@@ -105,12 +259,15 @@ export default function Settings() {
   }
 
   const roleColor: Record<string, string> = {
-    admin: "bg-primary/10 text-primary",
-    teacher: "bg-emerald-100 text-emerald-700",
-    accountant: "bg-yellow-100 text-yellow-700",
-    parent: "bg-blue-100 text-blue-700",
-    student: "bg-gray-100 text-gray-700",
+    admin: "bg-blue-100 text-blue-700 border-blue-200",
+    headteacher: "bg-purple-100 text-purple-700 border-purple-200",
+    teacher: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    accountant: "bg-amber-100 text-amber-700 border-amber-200",
+    student: "bg-sky-100 text-sky-700 border-sky-200",
+    parent: "bg-rose-100 text-rose-700 border-rose-200",
   };
+
+  const isAdmin = user?.role === "admin";
 
   return (
     <div className="p-6 space-y-5 max-w-4xl mx-auto">
@@ -120,10 +277,13 @@ export default function Settings() {
       </div>
 
       <Tabs defaultValue="school">
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="school"><School className="h-3.5 w-3.5 mr-1.5" />School Profile</TabsTrigger>
           <TabsTrigger value="academic"><Calendar className="h-3.5 w-3.5 mr-1.5" />Academic Years</TabsTrigger>
           <TabsTrigger value="users"><Users className="h-3.5 w-3.5 mr-1.5" />Users</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="permissions"><Shield className="h-3.5 w-3.5 mr-1.5" />Permissions</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="school" className="mt-4">
@@ -240,7 +400,7 @@ export default function Settings() {
                         {yearTerms.map(term => (
                           <div key={term.id} className="flex items-center gap-1.5 bg-muted rounded-lg px-3 py-1.5">
                             <span className="text-xs font-medium">{term.name}</span>
-                            {term.isCurrent && <Badge className="text-[10px] px-1 h-4 bg-emerald-100 text-emerald-700 border-emerald-200">Current</Badge>}
+                            {term.isCurrent && <Badge className="text-[10px] px-1 h-4 bg-primary/10 text-primary border-primary/20">Current</Badge>}
                             {!term.isCurrent && (
                               <button className="text-[10px] text-primary hover:underline" onClick={async () => {
                                 await setCurrentTermMutation.mutateAsync({ id: term.id });
@@ -274,6 +434,30 @@ export default function Settings() {
               <Plus className="h-4 w-4 mr-2" /> Add User
             </Button>
           </div>
+
+          {/* Test accounts info card */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-4">
+              <p className="text-xs font-semibold text-primary mb-2">Test Accounts</p>
+              <div className="grid sm:grid-cols-2 gap-x-6 gap-y-1">
+                {[
+                  { username: "admin", password: "admin123", role: "admin" },
+                  { username: "headteacher1", password: "head123", role: "headteacher" },
+                  { username: "teacher1", password: "teacher123", role: "teacher" },
+                  { username: "accountant1", password: "accountant123", role: "accountant" },
+                  { username: "student1", password: "student123", role: "student" },
+                  { username: "parent1", password: "parent123", role: "parent" },
+                ].map(u => (
+                  <div key={u.username} className="flex items-center gap-2 text-xs py-0.5">
+                    <span className="font-mono font-medium w-28">{u.username}</span>
+                    <span className="text-muted-foreground">/ {u.password}</span>
+                    <Badge variant="outline" className={`text-[10px] h-4 px-1.5 ml-auto ${roleColor[u.role] ?? ""}`}>{u.role}</Badge>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -286,21 +470,22 @@ export default function Settings() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map(user => (
-                    <tr key={user.id} className="border-b hover:bg-muted/20">
-                      <td className="px-4 py-3 text-sm font-medium">{user.fullName}</td>
-                      <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{user.username}</td>
+                  {users.map(u => (
+                    <tr key={u.id} className="border-b hover:bg-muted/20">
+                      <td className="px-4 py-3 text-sm font-medium">{u.fullName}</td>
+                      <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{u.username}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium capitalize ${roleColor[user.role] ?? ""}`}>
-                          {user.role}
-                        </span>
+                        <Badge variant="outline" className={`text-xs capitalize ${roleColor[u.role] ?? ""}`}>
+                          {u.role}
+                        </Badge>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          disabled={u.username === "admin"}
                           onClick={async () => {
-                            if (!confirm(`Delete user "${user.username}"?`)) return;
+                            if (!confirm(`Delete user "${u.username}"?`)) return;
                             try {
-                              await deleteUser.mutateAsync({ id: user.id });
+                              await deleteUser.mutateAsync({ id: u.id });
                               await qc.invalidateQueries({ queryKey: ["users"] });
                               toast({ title: "User deleted" });
                             } catch { toast({ title: "Could not delete user", variant: "destructive" }); }
@@ -315,6 +500,12 @@ export default function Settings() {
             </div>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="permissions" className="mt-4">
+            <PermissionsTab />
+          </TabsContent>
+        )}
       </Tabs>
 
       <Dialog open={showAddYear} onOpenChange={setShowAddYear}>
@@ -393,10 +584,11 @@ export default function Settings() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="headteacher">Headteacher</SelectItem>
                   <SelectItem value="teacher">Teacher</SelectItem>
                   <SelectItem value="accountant">Accountant</SelectItem>
-                  <SelectItem value="parent">Parent</SelectItem>
                   <SelectItem value="student">Student</SelectItem>
+                  <SelectItem value="parent">Parent</SelectItem>
                 </SelectContent>
               </Select>
             </div>

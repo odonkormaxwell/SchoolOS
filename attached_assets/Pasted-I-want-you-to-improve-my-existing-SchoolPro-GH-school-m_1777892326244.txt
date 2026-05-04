@@ -1,0 +1,80 @@
+I want you to improve my existing SchoolPro GH school management system without rebuilding the whole app.
+
+Focus only on Phase 1: Branding colours and role-based permissions.
+
+1. Branding Colour Update
+- Change the current dark green sidebar colour to a blue-black colour.
+- Use this blue-black as the main sidebar/background colour: #071A2C or a similar premium blue-black.
+- Replace all yellow/accent colour usage with #0285FF.
+- The main primary colour of the whole system should be #0285FF.
+- Update active sidebar menu item, buttons, icons, badges, tabs, hover states, and highlights to use #0285FF.
+- Keep the UI clean, premium, modern, and professional.
+- Do not change the overall layout unless necessary.
+
+2. Fix Role Permissions and Login Access
+Currently, when I log in with a student account, the student appears to have admin credentials. The same issue seems to affect other roles.
+
+Please audit and fix the role-based access control.
+
+Roles currently in the system should have proper permissions:
+- Super Admin / Admin
+- Teacher
+- Student
+- Parent / Guardian
+- Accountant / Bursar
+- Headteacher / Principal if available
+
+Apply best-practice school management permissions:
+
+Admin:
+- Full access to all modules and settings.
+- Can manage users, roles, students, teachers, classes, subjects, attendance, fees, results, reports, and system settings.
+
+Teacher:
+- Can view assigned classes and subjects.
+- Can mark attendance.
+- Can enter and update results only for assigned subjects/classes.
+- Can view students in assigned classes.
+- Cannot access system settings, fees management, user role settings, or admin-only reports.
+
+Student:
+- Can view own profile.
+- Can view own attendance.
+- Can view own fees status only as read-only.
+- Can view own results and report cards.
+- Cannot edit data.
+- Cannot access admin dashboard, users, teachers, fees management, settings, or other students’ records.
+
+Parent / Guardian:
+- Can view linked child/children only.
+- Can view attendance, results, report cards, and fee status of linked child/children.
+- Cannot edit school records.
+- Cannot view unrelated students.
+
+Accountant / Bursar:
+- Can manage fees, invoices, payments, balances, receipts, and fee reports.
+- Cannot manage academic results, class setup, subjects, or system settings unless explicitly allowed.
+
+Headteacher / Principal:
+- Can view academic and administrative reports.
+- Can view students, teachers, classes, attendance, fees, and results.
+- Can approve or review report cards if that feature exists.
+- Should not have technical system settings unless assigned.
+
+3. Editable Permissions
+- Add or improve a permission management screen where Admin can edit permissions for each role.
+- Use a simple checkbox-based permissions table.
+- Permissions should be grouped by module:
+  Dashboard, Students, Teachers, Classes & Subjects, Attendance, Fees & Payments, Results, Report Cards, Reports, Settings, Users/Roles.
+- Make sure permission changes actually affect sidebar visibility and page access.
+- Hide menu items that the logged-in user does not have permission to access.
+- Also block direct URL access to restricted pages.
+
+4. Testing
+- Create or update test users for each role.
+- Confirm that each role sees only the correct dashboard/menu items.
+- Do not delete existing data unless necessary.
+- Avoid major refactoring unless required.
+- Keep changes focused and efficient to reduce credit usage.
+
+After completing, give me a short summary of files changed and how to test each role.

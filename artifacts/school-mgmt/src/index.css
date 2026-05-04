@@ -66,7 +66,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* Ghana Green & Gold theme — light mode */
+/* SchoolPro GH — Blue-Black & Blue theme */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -74,67 +74,67 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Ghana green: #006B3F → h=150 s=100% l=21% */
-  --background: 150 20% 97%;
-  --foreground: 150 15% 10%;
-  --border: 150 15% 85%;
+  /* Light background — subtle blue tint */
+  --background: 210 30% 98%;
+  --foreground: 215 28% 12%;
+  --border: 215 20% 88%;
   --card: 0 0% 100%;
-  --card-foreground: 150 15% 10%;
-  --card-border: 150 15% 88%;
+  --card-foreground: 215 28% 12%;
+  --card-border: 215 20% 90%;
 
-  /* Sidebar — deep Ghana green */
-  --sidebar: 150 100% 13%;
-  --sidebar-foreground: 150 30% 92%;
-  --sidebar-border: 150 100% 10%;
-  --sidebar-primary: 45 100% 50%;
-  --sidebar-primary-foreground: 150 100% 10%;
-  --sidebar-accent: 150 100% 18%;
-  --sidebar-accent-foreground: 150 30% 92%;
-  --sidebar-ring: 45 100% 50%;
+  /* Sidebar — deep blue-black #071A2C */
+  --sidebar: 210 73% 10%;
+  --sidebar-foreground: 210 30% 88%;
+  --sidebar-border: 210 73% 7%;
+  --sidebar-primary: 209 100% 50%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 55% 17%;
+  --sidebar-accent-foreground: 210 30% 92%;
+  --sidebar-ring: 209 100% 50%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 150 15% 10%;
-  --popover-border: 150 15% 85%;
+  --popover-foreground: 215 28% 12%;
+  --popover-border: 215 20% 88%;
 
-  /* Primary: Ghana green */
-  --primary: 150 100% 21%;
+  /* Primary: #0285FF */
+  --primary: 209 100% 50%;
   --primary-foreground: 0 0% 100%;
 
-  /* Secondary: warm gold tint */
-  --secondary: 45 100% 92%;
-  --secondary-foreground: 45 80% 20%;
+  /* Secondary: light blue */
+  --secondary: 209 80% 94%;
+  --secondary-foreground: 209 80% 25%;
 
-  --muted: 150 10% 94%;
-  --muted-foreground: 150 10% 45%;
+  --muted: 210 25% 94%;
+  --muted-foreground: 215 15% 48%;
 
-  /* Accent: Ghana gold */
-  --accent: 45 100% 50%;
-  --accent-foreground: 150 100% 10%;
+  /* Accent: same blue */
+  --accent: 209 100% 50%;
+  --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 55%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 150 15% 85%;
-  --ring: 150 100% 21%;
+  --input: 215 20% 88%;
+  --ring: 209 100% 50%;
 
-  --chart-1: 150 100% 21%;
-  --chart-2: 45 100% 50%;
+  --chart-1: 209 100% 50%;
+  --chart-2: 172 66% 45%;
   --chart-3: 0 84% 55%;
-  --chart-4: 200 80% 45%;
-  --chart-5: 280 60% 50%;
+  --chart-4: 280 65% 55%;
+  --chart-5: 45 100% 50%;
 
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: .5rem;
-  --shadow-2xs: 0px 1px 2px 0px rgba(0,80,40,0.04);
-  --shadow-xs: 0px 1px 3px 0px rgba(0,80,40,0.06);
-  --shadow-sm: 0px 1px 3px 0px rgba(0,80,40,0.06), 0px 1px 2px -1px rgba(0,80,40,0.04);
-  --shadow: 0px 2px 6px 0px rgba(0,80,40,0.08), 0px 1px 2px -1px rgba(0,80,40,0.04);
-  --shadow-md: 0px 4px 8px 0px rgba(0,80,40,0.08), 0px 2px 4px -1px rgba(0,80,40,0.04);
-  --shadow-lg: 0px 8px 16px 0px rgba(0,80,40,0.10), 0px 4px 6px -1px rgba(0,80,40,0.06);
-  --shadow-xl: 0px 16px 24px 0px rgba(0,80,40,0.12), 0px 8px 10px -1px rgba(0,80,40,0.08);
-  --shadow-2xl: 0px 24px 48px 0px rgba(0,80,40,0.16);
+  --shadow-2xs: 0px 1px 2px 0px rgba(2,133,255,0.04);
+  --shadow-xs: 0px 1px 3px 0px rgba(2,133,255,0.06);
+  --shadow-sm: 0px 1px 3px 0px rgba(2,133,255,0.06), 0px 1px 2px -1px rgba(2,133,255,0.04);
+  --shadow: 0px 2px 6px 0px rgba(2,133,255,0.08), 0px 1px 2px -1px rgba(2,133,255,0.04);
+  --shadow-md: 0px 4px 8px 0px rgba(2,133,255,0.08), 0px 2px 4px -1px rgba(2,133,255,0.04);
+  --shadow-lg: 0px 8px 16px 0px rgba(2,133,255,0.10), 0px 4px 6px -1px rgba(2,133,255,0.06);
+  --shadow-xl: 0px 16px 24px 0px rgba(2,133,255,0.12), 0px 8px 10px -1px rgba(2,133,255,0.08);
+  --shadow-2xl: 0px 24px 48px 0px rgba(2,133,255,0.16);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
@@ -161,40 +161,40 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 150 15% 8%;
-  --foreground: 150 10% 92%;
-  --border: 150 15% 20%;
-  --card: 150 15% 11%;
-  --card-foreground: 150 10% 92%;
-  --card-border: 150 15% 18%;
-  --sidebar: 150 100% 8%;
-  --sidebar-foreground: 150 20% 88%;
-  --sidebar-border: 150 100% 6%;
-  --sidebar-primary: 45 100% 50%;
-  --sidebar-primary-foreground: 150 100% 8%;
-  --sidebar-accent: 150 100% 12%;
-  --sidebar-accent-foreground: 150 20% 88%;
-  --sidebar-ring: 45 100% 50%;
-  --popover: 150 15% 11%;
-  --popover-foreground: 150 10% 92%;
-  --popover-border: 150 15% 20%;
-  --primary: 150 80% 40%;
+  --background: 215 30% 8%;
+  --foreground: 210 20% 92%;
+  --border: 215 20% 20%;
+  --card: 215 28% 11%;
+  --card-foreground: 210 20% 92%;
+  --card-border: 215 20% 18%;
+  --sidebar: 210 73% 6%;
+  --sidebar-foreground: 210 25% 85%;
+  --sidebar-border: 210 73% 4%;
+  --sidebar-primary: 209 100% 55%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 210 55% 14%;
+  --sidebar-accent-foreground: 210 25% 88%;
+  --sidebar-ring: 209 100% 55%;
+  --popover: 215 28% 11%;
+  --popover-foreground: 210 20% 92%;
+  --popover-border: 215 20% 20%;
+  --primary: 209 100% 55%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 150 15% 18%;
-  --secondary-foreground: 150 10% 85%;
-  --muted: 150 15% 15%;
-  --muted-foreground: 150 10% 55%;
-  --accent: 45 100% 50%;
-  --accent-foreground: 150 100% 8%;
+  --secondary: 215 25% 18%;
+  --secondary-foreground: 210 20% 85%;
+  --muted: 215 20% 15%;
+  --muted-foreground: 215 15% 55%;
+  --accent: 209 100% 55%;
+  --accent-foreground: 0 0% 100%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --input: 150 15% 22%;
-  --ring: 150 80% 40%;
-  --chart-1: 150 80% 45%;
-  --chart-2: 45 100% 55%;
+  --input: 215 20% 22%;
+  --ring: 209 100% 55%;
+  --chart-1: 209 100% 60%;
+  --chart-2: 172 66% 50%;
   --chart-3: 0 84% 65%;
-  --chart-4: 200 80% 55%;
-  --chart-5: 280 60% 60%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 45 100% 55%;
   --shadow-2xs: 0px 1px 2px 0px rgba(0,0,0,0.30);
   --shadow-xs: 0px 1px 3px 0px rgba(0,0,0,0.35);
   --shadow-sm: 0px 1px 3px 0px rgba(0,0,0,0.35), 0px 1px 2px -1px rgba(0,0,0,0.25);
@@ -275,13 +275,5 @@
   .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
   .active-elevate-2:active:not(.no-default-active-elevate)::after {
     background-color: var(--elevate-2);
-  }
-
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
-    inset: -1px;
   }
 }

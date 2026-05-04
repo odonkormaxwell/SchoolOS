@@ -6,11 +6,15 @@ import peopleRouter from "./people";
 import academicRouter from "./academic";
 import feesRouter from "./fees";
 import reportsRouter from "./reports";
+import { requireAuth } from "../middleware/requireAuth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+
+router.use(requireAuth);
+
 router.use(schoolRouter);
 router.use(peopleRouter);
 router.use(academicRouter);
