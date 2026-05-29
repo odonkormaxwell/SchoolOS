@@ -51,6 +51,7 @@ export const studentsTable = pgTable("students", {
   parentEmail: text("parent_email"),
   parentRelationship: text("parent_relationship"),
   address: text("address"),
+  photoUrl: text("photo_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

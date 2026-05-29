@@ -349,6 +349,8 @@ export interface Student {
   parentRelationship?: string | null;
   /** @nullable */
   address?: string | null;
+  /** @nullable */
+  photoUrl?: string | null;
   createdAt: string;
 }
 
@@ -384,6 +386,7 @@ export interface CreateStudentBody {
   parentEmail?: string;
   parentRelationship?: string;
   address?: string;
+  photoUrl?: string;
 }
 
 export type UpdateStudentBodyGender =
@@ -418,6 +421,7 @@ export interface UpdateStudentBody {
   parentEmail?: string;
   parentRelationship?: string;
   address?: string;
+  photoUrl?: string;
 }
 
 export type TeacherStatus = (typeof TeacherStatus)[keyof typeof TeacherStatus];

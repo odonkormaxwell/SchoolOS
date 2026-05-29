@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import {
-  useListStudents,
-  useListClasses,
-  useCreateStudent,
-  useDeleteStudent,
+  useListStudents, useListClasses, useCreateStudent,
+  useUpdateStudent, useDeleteStudent,
 } from "@workspace/api-client-react";
-import type { SchoolClass } from "@workspace/api-client-react";
+import type { SchoolClass, Student } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,21 +13,62 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Eye, Trash2, GraduationCap, Filter } from "lucide-react";
+import { Plus, Search, Eye, Trash2, GraduationCap, Filter, Pencil, Camera } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const GENDERS = ["male", "female"];
 const STATUSES = ["active", "inactive", "graduated", "transferred"];
+const RELATIONSHIPS = ["Father", "Mother", "Guardian", "Grandparent", "Uncle", "Aunt", "Sibling", "Other"];
 
-function AddStudentDialog({ classes, onClose }: { classes: SchoolClass[]; onClose: () => void }) {
+function avatarColor(name: string): string {
+  const palette = ["#0285FF","#10B981","#F59E0B","#8B5CF6","#EC4899","#06B6D4","#F97316","#6366F1","#84CC16","#EF4444"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return palette[Math.abs(h) % palette.length];
+}
+
+function StudentMiniAvatar({ student }: { student: Pick<Student, "firstName" | "lastName" | "photoUrl"> }) {
+  const initials = `${student.firstName[0] ?? ""}${student.lastName[0] ?? ""}`.toUpperCase();
+  const bg = avatarColor(student.firstName + student.lastName);
+  if (student.photoUrl) {
+    return <img src={student.photoUrl} alt={initials} className="h-8 w-8 rounded-full object-cover border" />;
+  }
+  return (
+    <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: bg }}>
+      {initials}
+    </div>
+  );
+}
+
+function StudentFormDialog({
+  mode, student, classes, onClose,
+}: {
+  mode: "add" | "edit";
+  student?: Student;
+  classes: SchoolClass[];
+  onClose: () => void;
+}) {
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { mutateAsync, isPending } = useCreateStudent();
+  const createMutation = useCreateStudent();
+  const updateMutation = useUpdateStudent();
+  const isPending = createMutation.isPending || updateMutation.isPending;
+
   const [form, setForm] = useState({
-    firstName: "", lastName: "", otherNames: "", gender: "male",
-    classId: "", admissionDate: new Date().toISOString().slice(0, 10),
-    status: "active", parentName: "", parentPhone: "", parentEmail: "",
-    parentRelationship: "Father", address: "", dateOfBirth: "",
+    firstName: student?.firstName ?? "",
+    lastName: student?.lastName ?? "",
+    otherNames: student?.otherNames ?? "",
+    gender: student?.gender ?? "male",
+    classId: student?.classId ? String(student.classId) : "",
+    dateOfBirth: student?.dateOfBirth ?? "",
+    admissionDate: student?.admissionDate ?? new Date().toISOString().slice(0, 10),
+    status: student?.status ?? "active",
+    parentName: student?.parentName ?? "",
+    parentPhone: student?.parentPhone ?? "",
+    parentEmail: student?.parentEmail ?? "",
+    parentRelationship: student?.parentRelationship ?? "Father",
+    address: student?.address ?? "",
+    photoUrl: student?.photoUrl ?? "",
   });
 
   function set(key: string, value: string) {
@@ -38,29 +77,45 @@ function AddStudentDialog({ classes, onClose }: { classes: SchoolClass[]; onClos
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const payload = {
+      ...form,
+      classId: form.classId ? parseInt(form.classId) : undefined,
+      gender: form.gender as any,
+      status: form.status as any,
+      photoUrl: form.photoUrl || undefined,
+    };
     try {
-      await mutateAsync({
-        data: {
-          ...form,
-          classId: form.classId ? parseInt(form.classId) : undefined,
-          gender: form.gender as any,
-          status: form.status as any,
-        },
-      });
+      if (mode === "add") {
+        await createMutation.mutateAsync({ data: payload });
+        toast({ title: "Student added successfully" });
+      } else if (student) {
+        await updateMutation.mutateAsync({ id: student.id, data: payload });
+        toast({ title: "Student updated successfully" });
+      }
       await qc.invalidateQueries({ queryKey: ["students"] });
-      toast({ title: "Student added successfully" });
       onClose();
     } catch (err: any) {
-      toast({ title: "Error adding student", description: err?.data?.error ?? "Please try again", variant: "destructive" });
+      toast({ title: `Error ${mode === "add" ? "adding" : "updating"} student`, description: err?.data?.error ?? "Please try again", variant: "destructive" });
     }
   }
 
   return (
-    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>Add New Student</DialogTitle>
+        <DialogTitle>{mode === "add" ? "Add New Student" : "Edit Student Profile"}</DialogTitle>
       </DialogHeader>
       <form onSubmit={submit} className="space-y-4">
+        <div className="space-y-1.5">
+          <Label className="flex items-center gap-1.5"><Camera className="h-3.5 w-3.5" /> Profile Photo URL</Label>
+          <Input
+            value={form.photoUrl}
+            onChange={e => set("photoUrl", e.target.value)}
+            placeholder="https://example.com/photo.jpg (optional – leave blank for avatar)"
+          />
+          {form.photoUrl && (
+            <img src={form.photoUrl} alt="Preview" className="h-12 w-12 rounded-lg object-cover border mt-1" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          )}
+        </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label>First Name *</Label>
@@ -123,11 +178,7 @@ function AddStudentDialog({ classes, onClose }: { classes: SchoolClass[]; onClos
               <Label>Relationship</Label>
               <Select value={form.parentRelationship} onValueChange={v => set("parentRelationship", v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {["Father", "Mother", "Guardian", "Grandparent", "Uncle", "Aunt", "Sibling", "Other"].map(r => (
-                    <SelectItem key={r} value={r}>{r}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{RELATIONSHIPS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
@@ -142,7 +193,9 @@ function AddStudentDialog({ classes, onClose }: { classes: SchoolClass[]; onClos
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={isPending}>{isPending ? "Adding..." : "Add Student"}</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? (mode === "add" ? "Adding..." : "Saving...") : (mode === "add" ? "Add Student" : "Save Changes")}
+          </Button>
         </DialogFooter>
       </form>
     </DialogContent>
@@ -153,15 +206,13 @@ export default function Students() {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
+  const [editStudent, setEditStudent] = useState<Student | null>(null);
   const { toast } = useToast();
   const qc = useQueryClient();
 
   const { data: classes = [] } = useListClasses();
   const { data: students = [], isLoading } = useListStudents(
-    {
-      search: search || undefined,
-      classId: classFilter !== "all" ? parseInt(classFilter) : undefined,
-    },
+    { search: search || undefined, classId: classFilter !== "all" ? parseInt(classFilter) : undefined },
     { query: { queryKey: ["students", search, classFilter] } }
   );
 
@@ -224,11 +275,10 @@ export default function Students() {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Student ID</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Student</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Class</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Gender</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parent</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Parent / Phone</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
@@ -237,14 +287,14 @@ export default function Students() {
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b">
-                    {Array.from({ length: 7 }).map((_, j) => (
+                    {Array.from({ length: 6 }).map((_, j) => (
                       <td key={j} className="px-4 py-3"><Skeleton className="h-4 w-full" /></td>
                     ))}
                   </tr>
                 ))
               ) : students.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
+                  <td colSpan={6} className="px-4 py-16 text-center">
                     <GraduationCap className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-muted-foreground text-sm">No students found</p>
                   </td>
@@ -252,8 +302,15 @@ export default function Students() {
               ) : (
                 students.map((student) => (
                   <tr key={student.id} className="border-b hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 text-sm font-mono text-muted-foreground">{student.studentId}</td>
-                    <td className="px-4 py-3 text-sm font-medium">{student.firstName} {student.lastName}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <StudentMiniAvatar student={student} />
+                        <div>
+                          <p className="text-sm font-medium">{student.firstName} {student.lastName}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{student.studentId}</p>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{student.className ?? "—"}</td>
                     <td className="px-4 py-3 text-sm capitalize text-muted-foreground">{student.gender}</td>
                     <td className="px-4 py-3">
@@ -273,6 +330,12 @@ export default function Students() {
                           </Button>
                         </Link>
                         <Button
+                          variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary hover:text-primary"
+                          onClick={() => setEditStudent(student)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
                           variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                           onClick={() => handleDelete(student.id, `${student.firstName} ${student.lastName}`)}
                         >
@@ -289,7 +352,18 @@ export default function Students() {
       </Card>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        {showAdd && <AddStudentDialog classes={classes} onClose={() => setShowAdd(false)} />}
+        {showAdd && <StudentFormDialog mode="add" classes={classes} onClose={() => setShowAdd(false)} />}
+      </Dialog>
+
+      <Dialog open={!!editStudent} onOpenChange={open => !open && setEditStudent(null)}>
+        {editStudent && (
+          <StudentFormDialog
+            mode="edit"
+            student={editStudent}
+            classes={classes}
+            onClose={() => setEditStudent(null)}
+          />
+        )}
       </Dialog>
     </div>
   );

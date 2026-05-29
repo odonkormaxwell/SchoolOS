@@ -442,6 +442,7 @@ export const ListStudentsResponseItem = zod.object({
   parentEmail: zod.string().nullish(),
   parentRelationship: zod.string().nullish(),
   address: zod.string().nullish(),
+  photoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListStudentsResponse = zod.array(ListStudentsResponseItem);
@@ -465,6 +466,7 @@ export const CreateStudentBody = zod.object({
   parentEmail: zod.string().optional(),
   parentRelationship: zod.string().optional(),
   address: zod.string().optional(),
+  photoUrl: zod.string().optional(),
 });
 
 /**
@@ -491,6 +493,7 @@ export const GetStudentResponse = zod.object({
   parentEmail: zod.string().nullish(),
   parentRelationship: zod.string().nullish(),
   address: zod.string().nullish(),
+  photoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -517,6 +520,7 @@ export const UpdateStudentBody = zod.object({
   parentEmail: zod.string().optional(),
   parentRelationship: zod.string().optional(),
   address: zod.string().optional(),
+  photoUrl: zod.string().optional(),
 });
 
 export const UpdateStudentResponse = zod.object({
@@ -536,6 +540,7 @@ export const UpdateStudentResponse = zod.object({
   parentEmail: zod.string().nullish(),
   parentRelationship: zod.string().nullish(),
   address: zod.string().nullish(),
+  photoUrl: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
