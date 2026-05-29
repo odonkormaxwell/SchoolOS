@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { db, feeTypesTable, feeAssignmentsTable, paymentsTable, studentsTable, classesTable, termsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
@@ -24,6 +24,15 @@ import {
 
 const router: IRouter = Router();
 
+function currentUser(req: Request): { role: string; teacherId: number | null; studentId: number | null } {
+  const u = (req as any).currentUser;
+  return {
+    role: u?.role ?? "admin",
+    teacherId: u?.teacherId ? parseInt(u.teacherId) : null,
+    studentId: u?.studentId ? parseInt(u.studentId) : null,
+  };
+}
+
 async function generateReceiptNumber(): Promise<string> {
   const payments = await db.select({ receiptNumber: paymentsTable.receiptNumber }).from(paymentsTable);
   const nums = payments.map(p => parseInt(p.receiptNumber.replace(/\D/g, ""))).filter(n => !isNaN(n));
@@ -37,6 +46,11 @@ router.get("/fee-types", async (_req, res): Promise<void> => {
 });
 
 router.post("/fee-types", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher" && role !== "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreateFeeTypeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -47,6 +61,11 @@ router.post("/fee-types", async (req, res): Promise<void> => {
 });
 
 router.put("/fee-types/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher" && role !== "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = UpdateFeeTypeParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -66,6 +85,11 @@ router.put("/fee-types/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/fee-types/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher" && role !== "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeleteFeeTypeParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -105,6 +129,11 @@ router.get("/fee-assignments", async (req, res): Promise<void> => {
 });
 
 router.post("/fee-assignments", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher" && role !== "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreateFeeAssignmentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -115,6 +144,11 @@ router.post("/fee-assignments", async (req, res): Promise<void> => {
 });
 
 router.delete("/fee-assignments/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher" && role !== "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeleteFeeAssignmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -129,6 +163,7 @@ router.delete("/fee-assignments/:id", async (req, res): Promise<void> => {
 });
 
 router.get("/payments", async (req, res): Promise<void> => {
+  const { role, studentId } = currentUser(req);
   const query = ListPaymentsQueryParams.safeParse(req.query);
   let payments = await db.select().from(paymentsTable).orderBy(paymentsTable.paymentDate);
   const [students, feeTypes, terms, classes] = await Promise.all([
@@ -141,6 +176,12 @@ router.get("/payments", async (req, res): Promise<void> => {
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]));
   const feeTypeMap = Object.fromEntries(feeTypes.map(f => [f.id, f.name]));
   const termMap = Object.fromEntries(terms.map(t => [t.id, t.name]));
+
+  if (role === "student" || role === "parent") {
+    payments = studentId ? payments.filter(p => p.studentId === studentId) : [];
+  } else if (role === "teacher") {
+    payments = [];
+  }
 
   if (query.success) {
     if (query.data.studentId) payments = payments.filter(p => p.studentId === query.data.studentId);
@@ -164,6 +205,11 @@ router.get("/payments", async (req, res): Promise<void> => {
 });
 
 router.post("/payments", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher" && role !== "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreatePaymentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -175,6 +221,7 @@ router.post("/payments", async (req, res): Promise<void> => {
 });
 
 router.get("/payments/:id", async (req, res): Promise<void> => {
+  const { role, studentId } = currentUser(req);
   const params = GetPaymentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -183,6 +230,10 @@ router.get("/payments/:id", async (req, res): Promise<void> => {
   const [payment] = await db.select().from(paymentsTable).where(eq(paymentsTable.id, params.data.id));
   if (!payment) {
     res.status(404).json({ error: "Payment not found" });
+    return;
+  }
+  if ((role === "student" || role === "parent") && payment.studentId !== studentId) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
   const [student] = await db.select().from(studentsTable).where(eq(studentsTable.id, payment.studentId));
@@ -203,6 +254,11 @@ router.get("/payments/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/payments/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher" && role !== "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeletePaymentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -217,6 +273,7 @@ router.delete("/payments/:id", async (req, res): Promise<void> => {
 });
 
 router.get("/fee-balances", async (req, res): Promise<void> => {
+  const { role, studentId } = currentUser(req);
   const query = ListFeeBalancesQueryParams.safeParse(req.query);
 
   const [students, feeTypes, feeAssignments, payments, classes, terms] = await Promise.all([
@@ -232,6 +289,13 @@ router.get("/fee-balances", async (req, res): Promise<void> => {
   const feeTypeMap = Object.fromEntries(feeTypes.map(f => [f.id, f.name]));
 
   let filteredStudents = students.filter(s => s.status === "active");
+
+  if (role === "student" || role === "parent") {
+    filteredStudents = studentId ? filteredStudents.filter(s => s.id === studentId) : [];
+  } else if (role === "teacher") {
+    filteredStudents = [];
+  }
+
   let filteredAssignments = feeAssignments;
 
   if (query.success) {

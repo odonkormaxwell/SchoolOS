@@ -1,6 +1,6 @@
-import { Router, type IRouter } from "express";
-import { db, attendanceTable, resultsTable, studentsTable, classesTable, subjectsTable, termsTable, academicYearsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { Router, type IRouter, type Request } from "express";
+import { db, attendanceTable, resultsTable, studentsTable, classesTable, subjectsTable, termsTable, academicYearsTable, classAssignmentsTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import {
   ListAttendanceQueryParams,
   ListAttendanceResponse,
@@ -21,6 +21,29 @@ import {
 
 const router: IRouter = Router();
 
+function currentUser(req: Request): { role: string; teacherId: number | null; studentId: number | null } {
+  const u = (req as any).currentUser;
+  return {
+    role: u?.role ?? "admin",
+    teacherId: u?.teacherId ? parseInt(u.teacherId) : null,
+    studentId: u?.studentId ? parseInt(u.studentId) : null,
+  };
+}
+
+async function getTeacherClassIds(teacherId: number): Promise<number[]> {
+  const rows = await db.select({ classId: classAssignmentsTable.classId })
+    .from(classAssignmentsTable)
+    .where(eq(classAssignmentsTable.teacherId, teacherId));
+  return [...new Set(rows.map(r => r.classId))];
+}
+
+async function getTeacherSubjectIds(teacherId: number): Promise<number[]> {
+  const rows = await db.select({ subjectId: classAssignmentsTable.subjectId })
+    .from(classAssignmentsTable)
+    .where(eq(classAssignmentsTable.teacherId, teacherId));
+  return [...new Set(rows.map(r => r.subjectId).filter((id): id is number => id != null))];
+}
+
 function computeGrade(total: number): { grade: string; remarks: string } {
   if (total >= 80) return { grade: "A1", remarks: "Excellent" };
   if (total >= 70) return { grade: "B2", remarks: "Very Good" };
@@ -34,8 +57,16 @@ function computeGrade(total: number): { grade: string; remarks: string } {
 }
 
 router.get("/attendance", async (req, res): Promise<void> => {
+  const { role, teacherId, studentId } = currentUser(req);
   const query = ListAttendanceQueryParams.safeParse(req.query);
   let records = await db.select().from(attendanceTable).orderBy(attendanceTable.date);
+
+  if (role === "student" || role === "parent") {
+    records = studentId ? records.filter(r => r.studentId === studentId) : [];
+  } else if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    records = records.filter(r => classIds.includes(r.classId));
+  }
 
   const students = await db.select().from(studentsTable);
   const classes = await db.select().from(classesTable);
@@ -57,12 +88,25 @@ router.get("/attendance", async (req, res): Promise<void> => {
 });
 
 router.post("/attendance", async (req, res): Promise<void> => {
+  const { role, teacherId } = currentUser(req);
+  if (role === "student" || role === "parent" || role === "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = MarkAttendanceBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
   const { classId, date, termId, records } = parsed.data;
+
+  if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    if (!classIds.includes(classId)) {
+      res.status(403).json({ error: "You are not assigned to this class" });
+      return;
+    }
+  }
 
   const existing = await db.select().from(attendanceTable)
     .where(eq(attendanceTable.classId, classId));
@@ -85,8 +129,17 @@ router.post("/attendance", async (req, res): Promise<void> => {
 });
 
 router.get("/attendance/summary", async (req, res): Promise<void> => {
+  const { role, teacherId, studentId } = currentUser(req);
   const query = GetAttendanceSummaryQueryParams.safeParse(req.query);
   let records = await db.select().from(attendanceTable);
+
+  if (role === "student" || role === "parent") {
+    records = studentId ? records.filter(r => r.studentId === studentId) : [];
+  } else if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    records = records.filter(r => classIds.includes(r.classId));
+  }
+
   const students = await db.select().from(studentsTable);
   const classes = await db.select().from(classesTable);
   const classMap = Object.fromEntries(classes.map(c => [c.id, c.name]));
@@ -131,8 +184,16 @@ router.get("/attendance/summary", async (req, res): Promise<void> => {
 });
 
 router.get("/results", async (req, res): Promise<void> => {
+  const { role, teacherId, studentId } = currentUser(req);
   const query = ListResultsQueryParams.safeParse(req.query);
   let results = await db.select().from(resultsTable).orderBy(resultsTable.createdAt);
+
+  if (role === "student" || role === "parent") {
+    results = studentId ? results.filter(r => r.studentId === studentId) : [];
+  } else if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    results = results.filter(r => classIds.includes(r.classId));
+  }
 
   const [students, classes, subjects, terms] = await Promise.all([
     db.select().from(studentsTable),
@@ -162,10 +223,22 @@ router.get("/results", async (req, res): Promise<void> => {
 });
 
 router.post("/results", async (req, res): Promise<void> => {
+  const { role, teacherId } = currentUser(req);
+  if (role === "student" || role === "parent" || role === "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreateResultBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+  if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    if (!classIds.includes(parsed.data.classId)) {
+      res.status(403).json({ error: "You are not assigned to this class" });
+      return;
+    }
   }
   const { classScore, examScore } = parsed.data;
   const classS = classScore ?? 0;
@@ -183,6 +256,11 @@ router.post("/results", async (req, res): Promise<void> => {
 });
 
 router.put("/results/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role === "student" || role === "parent" || role === "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = UpdateResultParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -214,6 +292,11 @@ router.put("/results/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/results/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role === "student" || role === "parent" || role === "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeleteResultParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -228,6 +311,11 @@ router.delete("/results/:id", async (req, res): Promise<void> => {
 });
 
 router.post("/results/bulk", async (req, res): Promise<void> => {
+  const { role, teacherId } = currentUser(req);
+  if (role === "student" || role === "parent" || role === "accountant") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = BulkCreateResultsBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -235,9 +323,27 @@ router.post("/results/bulk", async (req, res): Promise<void> => {
   }
   const { classId, subjectId, termId, results } = parsed.data;
 
+  if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    if (!classIds.includes(classId)) {
+      res.status(403).json({ error: "You are not assigned to this class" });
+      return;
+    }
+    const subjectIds = await getTeacherSubjectIds(teacherId);
+    if (!subjectIds.includes(subjectId)) {
+      res.status(403).json({ error: "You are not assigned to this subject" });
+      return;
+    }
+  }
+
   for (const r of results) {
     await db.delete(resultsTable)
-      .where(eq(resultsTable.studentId, r.studentId));
+      .where(and(
+        eq(resultsTable.studentId, r.studentId),
+        eq(resultsTable.classId, classId),
+        eq(resultsTable.subjectId, subjectId),
+        eq(resultsTable.termId, termId),
+      ));
   }
 
   const toInsert = results.map(r => {
@@ -263,6 +369,7 @@ router.post("/results/bulk", async (req, res): Promise<void> => {
 });
 
 router.get("/report-cards", async (req, res): Promise<void> => {
+  const { role, teacherId, studentId } = currentUser(req);
   const query = ListReportCardsQueryParams.safeParse(req.query);
 
   const [students, classes, subjects, terms, years, attendance] = await Promise.all([
@@ -281,6 +388,14 @@ router.get("/report-cards", async (req, res): Promise<void> => {
   const yearMap = Object.fromEntries(years.map(y => [y.id, y.name]));
 
   let filteredStudents = students;
+
+  if (role === "student" || role === "parent") {
+    filteredStudents = studentId ? filteredStudents.filter(s => s.id === studentId) : [];
+  } else if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    filteredStudents = filteredStudents.filter(s => s.classId && classIds.includes(s.classId));
+  }
+
   if (query.success) {
     if (query.data.studentId) filteredStudents = filteredStudents.filter(s => s.id === query.data.studentId);
     if (query.data.classId) filteredStudents = filteredStudents.filter(s => s.classId === query.data.classId);

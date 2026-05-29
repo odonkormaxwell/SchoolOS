@@ -1,6 +1,6 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { db, teachersTable, studentsTable, classesTable, subjectsTable, classAssignmentsTable, termsTable, academicYearsTable } from "@workspace/db";
-import { eq, like, or, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   ListTeachersQueryParams,
   ListTeachersResponse,
@@ -40,6 +40,29 @@ import {
 
 const router: IRouter = Router();
 
+function currentUser(req: Request): { role: string; teacherId: number | null; studentId: number | null } {
+  const u = (req as any).currentUser;
+  return {
+    role: u?.role ?? "admin",
+    teacherId: u?.teacherId ? parseInt(u.teacherId) : null,
+    studentId: u?.studentId ? parseInt(u.studentId) : null,
+  };
+}
+
+async function getTeacherClassIds(teacherId: number): Promise<number[]> {
+  const rows = await db.select({ classId: classAssignmentsTable.classId })
+    .from(classAssignmentsTable)
+    .where(eq(classAssignmentsTable.teacherId, teacherId));
+  return [...new Set(rows.map(r => r.classId))];
+}
+
+async function getTeacherSubjectIds(teacherId: number): Promise<number[]> {
+  const rows = await db.select({ subjectId: classAssignmentsTable.subjectId })
+    .from(classAssignmentsTable)
+    .where(eq(classAssignmentsTable.teacherId, teacherId));
+  return [...new Set(rows.map(r => r.subjectId).filter((id): id is number => id != null))];
+}
+
 let teacherCounter = 1000;
 let studentCounter = 1000;
 
@@ -58,8 +81,20 @@ async function getNextStudentId(): Promise<string> {
 }
 
 router.get("/teachers", async (req, res): Promise<void> => {
+  const { role, teacherId } = currentUser(req);
   const query = ListTeachersQueryParams.safeParse(req.query);
   let teachers = await db.select().from(teachersTable).orderBy(teachersTable.firstName);
+
+  if (role === "teacher") {
+    if (teacherId) {
+      teachers = teachers.filter(t => t.id === teacherId);
+    } else {
+      teachers = [];
+    }
+  } else if (role === "student" || role === "parent") {
+    teachers = [];
+  }
+
   if (query.success && query.data.search) {
     const s = query.data.search.toLowerCase();
     teachers = teachers.filter(t =>
@@ -72,6 +107,11 @@ router.get("/teachers", async (req, res): Promise<void> => {
 });
 
 router.post("/teachers", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreateTeacherBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -83,9 +123,18 @@ router.post("/teachers", async (req, res): Promise<void> => {
 });
 
 router.get("/teachers/:id", async (req, res): Promise<void> => {
+  const { role, teacherId } = currentUser(req);
   const params = GetTeacherParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (role === "student" || role === "parent") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  if (role === "teacher" && teacherId !== params.data.id) {
+    res.status(403).json({ error: "Forbidden" });
     return;
   }
   const [teacher] = await db.select().from(teachersTable).where(eq(teachersTable.id, params.data.id));
@@ -97,6 +146,11 @@ router.get("/teachers/:id", async (req, res): Promise<void> => {
 });
 
 router.put("/teachers/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = UpdateTeacherParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -116,6 +170,11 @@ router.put("/teachers/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/teachers/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeleteTeacherParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -130,12 +189,25 @@ router.delete("/teachers/:id", async (req, res): Promise<void> => {
 });
 
 router.get("/students", async (req, res): Promise<void> => {
+  const { role, teacherId, studentId } = currentUser(req);
   const query = ListStudentsQueryParams.safeParse(req.query);
   const allStudents = await db.select().from(studentsTable).orderBy(studentsTable.firstName);
   const allClasses = await db.select().from(classesTable);
   const classMap = Object.fromEntries(allClasses.map(c => [c.id, c.name]));
 
   let students = allStudents;
+
+  if (role === "student" || role === "parent") {
+    students = studentId ? students.filter(s => s.id === studentId) : [];
+  } else if (role === "teacher") {
+    if (teacherId) {
+      const classIds = await getTeacherClassIds(teacherId);
+      students = students.filter(s => s.classId && classIds.includes(s.classId));
+    } else {
+      students = [];
+    }
+  }
+
   if (query.success) {
     if (query.data.classId) students = students.filter(s => s.classId === query.data.classId);
     if (query.data.search) {
@@ -155,6 +227,11 @@ router.get("/students", async (req, res): Promise<void> => {
 });
 
 router.post("/students", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreateStudentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -170,11 +247,27 @@ router.post("/students", async (req, res): Promise<void> => {
 });
 
 router.get("/students/:id", async (req, res): Promise<void> => {
+  const { role, teacherId, studentId: myStudentId } = currentUser(req);
   const params = GetStudentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
     return;
   }
+
+  if (role === "student" || role === "parent") {
+    if (myStudentId !== params.data.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  } else if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    const [student] = await db.select().from(studentsTable).where(eq(studentsTable.id, params.data.id));
+    if (!student || !student.classId || !classIds.includes(student.classId)) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+  }
+
   const [student] = await db.select().from(studentsTable).where(eq(studentsTable.id, params.data.id));
   if (!student) {
     res.status(404).json({ error: "Student not found" });
@@ -189,6 +282,11 @@ router.get("/students/:id", async (req, res): Promise<void> => {
 });
 
 router.put("/students/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = UpdateStudentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -208,6 +306,11 @@ router.put("/students/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/students/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeleteStudentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -221,8 +324,17 @@ router.delete("/students/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-router.get("/classes", async (_req, res): Promise<void> => {
-  const classes = await db.select().from(classesTable).orderBy(classesTable.name);
+router.get("/classes", async (req, res): Promise<void> => {
+  const { role, teacherId } = currentUser(req);
+  let classes = await db.select().from(classesTable).orderBy(classesTable.name);
+
+  if (role === "teacher" && teacherId) {
+    const classIds = await getTeacherClassIds(teacherId);
+    classes = classes.filter(c => classIds.includes(c.id));
+  } else if (role === "student" || role === "parent") {
+    classes = [];
+  }
+
   const students = await db.select({ classId: studentsTable.classId }).from(studentsTable).where(eq(studentsTable.status, "active"));
   const countMap: Record<number, number> = {};
   for (const s of students) {
@@ -232,6 +344,11 @@ router.get("/classes", async (_req, res): Promise<void> => {
 });
 
 router.post("/classes", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreateClassBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -242,6 +359,11 @@ router.post("/classes", async (req, res): Promise<void> => {
 });
 
 router.put("/classes/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = UpdateClassParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -261,6 +383,11 @@ router.put("/classes/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/classes/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeleteClassParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -280,6 +407,11 @@ router.get("/subjects", async (_req, res): Promise<void> => {
 });
 
 router.post("/subjects", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreateSubjectBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -290,6 +422,11 @@ router.post("/subjects", async (req, res): Promise<void> => {
 });
 
 router.put("/subjects/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = UpdateSubjectParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -309,6 +446,11 @@ router.put("/subjects/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/subjects/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeleteSubjectParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
@@ -323,8 +465,16 @@ router.delete("/subjects/:id", async (req, res): Promise<void> => {
 });
 
 router.get("/class-assignments", async (req, res): Promise<void> => {
+  const { role, teacherId } = currentUser(req);
   const query = ListClassAssignmentsQueryParams.safeParse(req.query);
   let assignments = await db.select().from(classAssignmentsTable).orderBy(classAssignmentsTable.createdAt);
+
+  if (role === "teacher" && teacherId) {
+    assignments = assignments.filter(a => a.teacherId === teacherId);
+  } else if (role === "student" || role === "parent") {
+    assignments = [];
+  }
+
   const [classes, teachers, subjects] = await Promise.all([
     db.select().from(classesTable),
     db.select().from(teachersTable),
@@ -350,6 +500,11 @@ router.get("/class-assignments", async (req, res): Promise<void> => {
 });
 
 router.post("/class-assignments", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const parsed = CreateClassAssignmentBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -363,6 +518,11 @@ router.post("/class-assignments", async (req, res): Promise<void> => {
 });
 
 router.delete("/class-assignments/:id", async (req, res): Promise<void> => {
+  const { role } = currentUser(req);
+  if (role !== "admin" && role !== "headteacher") {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
   const params = DeleteClassAssignmentParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });
