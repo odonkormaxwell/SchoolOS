@@ -101,7 +101,7 @@ export default function StudentPortal() {
   const { data: school } = useGetSchoolProfile();
   const { data: student, isLoading: studentLoading } = useGetStudent(
     studentId!,
-    { query: { enabled: !!studentId } }
+    { query: { enabled: !!studentId, queryKey: ["student-portal", "me", studentId] } }
   );
   const { data: terms = [] } = useListTerms();
   const currentTerm = terms.find(t => t.isCurrent);
@@ -109,19 +109,19 @@ export default function StudentPortal() {
 
   const { data: results = [], isLoading: resultsLoading } = useListResults(
     {},
-    { query: { enabled: !!studentId } }
+    { query: { enabled: !!studentId, queryKey: ["student-portal", "results", studentId] } }
   );
   const { data: attendance = [], isLoading: attendanceLoading } = useListAttendance(
     {},
-    { query: { enabled: !!studentId } }
+    { query: { enabled: !!studentId, queryKey: ["student-portal", "attendance", studentId] } }
   );
   const { data: balances = [], isLoading: feesLoading } = useListFeeBalances(
     {},
-    { query: { enabled: !!studentId } }
+    { query: { enabled: !!studentId, queryKey: ["student-portal", "balances", studentId] } }
   );
   const { data: reportCards = [] } = useListReportCards(
     termIdForQuery ? { termId: termIdForQuery } : {},
-    { query: { enabled: !!studentId } }
+    { query: { enabled: !!studentId, queryKey: ["student-portal", "report-cards", studentId, termIdForQuery] } }
   );
 
   const termResults = termIdForQuery ? results.filter(r => r.termId === termIdForQuery) : results;
@@ -194,7 +194,7 @@ export default function StudentPortal() {
           />
           <StatCard
             label="Fees Owed"
-            value={totalOwed > 0 ? `GH₵${totalOwed.toLocaleString()}` : "Cleared"}
+            value={totalOwed > 0 ? `GH\u20B5${totalOwed.toLocaleString()}` : "Cleared"}
             sub={totalOwed > 0 ? "outstanding" : "all paid"}
             color={totalOwed > 0 ? "bg-rose-500/30" : "bg-emerald-500/20"}
           />
@@ -269,9 +269,9 @@ export default function StudentPortal() {
                     <div key={r.id} className="p-3 rounded-xl border bg-card">
                       <div className="flex items-center justify-between mb-1.5">
                         <p className="text-sm font-semibold text-foreground truncate">{r.subjectName ?? "Subject"}</p>
-                        <GradeBadge grade={r.grade} />
+                        <GradeBadge grade={r.grade ?? null} />
                       </div>
-                      <GradeBar score={r.totalScore} />
+                      <GradeBar score={r.totalScore ?? null} />
                       <div className="flex gap-3 mt-1.5">
                         <span className="text-xs text-muted-foreground">Class: <b className="text-foreground">{r.classScore ?? "—"}</b></span>
                         <span className="text-xs text-muted-foreground">Exam: <b className="text-foreground">{r.examScore ?? "—"}</b></span>
@@ -418,9 +418,9 @@ export default function StudentPortal() {
                           <p className="text-xs text-muted-foreground">Grade</p>
                         </div>
                       )}
-                      {reportCard.attendanceSummary.totalDays > 0 && (
+                      {(reportCard.attendanceSummary?.totalDays ?? 0) > 0 && (
                         <div className="text-center">
-                          <p className="text-2xl font-black text-emerald-600">{reportCard.attendanceSummary.attendanceRate}%</p>
+                          <p className="text-2xl font-black text-emerald-600">{reportCard.attendanceSummary?.attendanceRate ?? 0}%</p>
                           <p className="text-xs text-muted-foreground">Attendance</p>
                         </div>
                       )}
@@ -439,7 +439,7 @@ export default function StudentPortal() {
                             <span className="flex-1 text-sm text-foreground">{r.subjectName}</span>
                             <span className="text-xs text-muted-foreground w-16 text-right">{r.classScore ?? "—"} / {r.examScore ?? "—"}</span>
                             <span className="font-bold text-sm text-foreground w-8 text-right">{r.totalScore ?? "—"}</span>
-                            <GradeBadge grade={r.grade} />
+                            <GradeBadge grade={r.grade ?? null} />
                           </div>
                         ))}
                       </div>

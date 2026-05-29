@@ -133,10 +133,10 @@ router.get("/reports/fees", async (req, res): Promise<void> => {
   const [students, classes, terms, feeTypes, feeAssignments, payments] = await Promise.all([
     db.select().from(studentsTable),
     db.select().from(classesTable),
+    db.select().from(termsTable),
     db.select().from(feeTypesTable),
     db.select().from(feeAssignmentsTable),
     db.select().from(paymentsTable),
-    db.select().from(termsTable),
   ]);
 
   let filteredAssignments = feeAssignments;

@@ -10,6 +10,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Students from "@/pages/Students";
 import StudentDetail from "@/pages/StudentDetail";
+import StudentPortal from "@/pages/StudentPortal";
 import Teachers from "@/pages/Teachers";
 import Classes from "@/pages/Classes";
 import Attendance from "@/pages/Attendance";
@@ -82,10 +83,38 @@ function ProtectedRoute({
   );
 }
 
+function StudentPortalRoute() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return <Redirect to="/login" />;
+
+  if (user.role !== "student" && user.role !== "parent") {
+    return <Redirect to="/dashboard" />;
+  }
+
+  return (
+    <Layout>
+      <StudentPortal />
+    </Layout>
+  );
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/my-portal" component={StudentPortalRoute} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} module="dashboard" />} />
       <Route path="/students/:id" component={() => <ProtectedRoute component={StudentDetail} module="students" />} />
       <Route path="/students" component={() => <ProtectedRoute component={Students} module="students" />} />

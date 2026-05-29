@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request } from "express";
+import { Router, type IRouter } from "express";
 import { db, teachersTable, studentsTable, classesTable, subjectsTable, classAssignmentsTable, termsTable, academicYearsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import {
@@ -40,7 +40,7 @@ import {
 
 const router: IRouter = Router();
 
-function currentUser(req: Request): { role: string; teacherId: number | null; studentId: number | null } {
+function currentUser(req: any): { role: string; teacherId: number | null; studentId: number | null } {
   const u = (req as any).currentUser;
   return {
     role: u?.role ?? "admin",

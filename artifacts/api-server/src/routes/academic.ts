@@ -1,4 +1,4 @@
-import { Router, type IRouter, type Request } from "express";
+import { Router, type IRouter } from "express";
 import { db, attendanceTable, resultsTable, studentsTable, classesTable, subjectsTable, termsTable, academicYearsTable, classAssignmentsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import {
@@ -21,7 +21,7 @@ import {
 
 const router: IRouter = Router();
 
-function currentUser(req: Request): { role: string; teacherId: number | null; studentId: number | null } {
+function currentUser(req: any): { role: string; teacherId: number | null; studentId: number | null } {
   const u = (req as any).currentUser;
   return {
     role: u?.role ?? "admin",
@@ -75,7 +75,7 @@ router.get("/attendance", async (req, res): Promise<void> => {
 
   if (query.success) {
     if (query.data.classId) records = records.filter(r => r.classId === query.data.classId);
-    if (query.data.date) records = records.filter(r => r.date === query.data.date);
+    if (query.data.date) records = records.filter(r => r.date === (query.data.date as Date).toISOString().split("T")[0]);
     if (query.data.termId) records = records.filter(r => r.termId === query.data.termId);
     if (query.data.studentId) records = records.filter(r => r.studentId === query.data.studentId);
   }
