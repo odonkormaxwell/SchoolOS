@@ -66,8 +66,10 @@ router.post("/academic-years", async (req, res): Promise<void> => {
   const [year] = await db.insert(academicYearsTable).values({
     ...parsed.data,
     isCurrent: parsed.data.isCurrent ?? false,
+    startDate: parsed.data.startDate.toISOString().split("T")[0],
+    endDate: parsed.data.endDate.toISOString().split("T")[0],
   }).returning();
-  res.status(201).json(GetAcademicYearResponse.parse(year));
+  res.status(201).json(GetAcademicYearResponse.parse(year as any));
 });
 
 router.get("/academic-years/:id", async (req, res): Promise<void> => {
@@ -95,12 +97,16 @@ router.put("/academic-years/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [year] = await db.update(academicYearsTable).set(parsed.data).where(eq(academicYearsTable.id, params.data.id)).returning();
+  const [year] = await db.update(academicYearsTable).set({
+    ...parsed.data,
+    startDate: parsed.data.startDate ? parsed.data.startDate.toISOString().split("T")[0] : undefined,
+    endDate: parsed.data.endDate ? parsed.data.endDate.toISOString().split("T")[0] : undefined,
+  }).where(eq(academicYearsTable.id, params.data.id)).returning();
   if (!year) {
     res.status(404).json({ error: "Academic year not found" });
     return;
   }
-  res.json(UpdateAcademicYearResponse.parse(year));
+  res.json(UpdateAcademicYearResponse.parse(year as any));
 });
 
 router.delete("/academic-years/:id", async (req, res): Promise<void> => {
@@ -152,6 +158,8 @@ router.post("/terms", async (req, res): Promise<void> => {
   const [term] = await db.insert(termsTable).values({
     ...parsed.data,
     isCurrent: parsed.data.isCurrent ?? false,
+    startDate: parsed.data.startDate.toISOString().split("T")[0],
+    endDate: parsed.data.endDate.toISOString().split("T")[0],
   }).returning();
   res.status(201).json({ ...term, academicYearName: null });
 });
@@ -167,12 +175,16 @@ router.put("/terms/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [term] = await db.update(termsTable).set(parsed.data).where(eq(termsTable.id, params.data.id)).returning();
+  const [term] = await db.update(termsTable).set({
+    ...parsed.data,
+    startDate: parsed.data.startDate ? parsed.data.startDate.toISOString().split("T")[0] : undefined,
+    endDate: parsed.data.endDate ? parsed.data.endDate.toISOString().split("T")[0] : undefined,
+  }).where(eq(termsTable.id, params.data.id)).returning();
   if (!term) {
     res.status(404).json({ error: "Term not found" });
     return;
   }
-  res.json(UpdateTermResponse.parse({ ...term, academicYearName: null }));
+  res.json(UpdateTermResponse.parse({ ...term, academicYearName: null } as any));
 });
 
 router.delete("/terms/:id", async (req, res): Promise<void> => {

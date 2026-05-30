@@ -1,15 +1,9 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import cookieParser from "cookie-parser";
 import router from "./routes";
 import { logger } from "./lib/logger";
-
-declare module "express" {
-  interface Request {
-    session: Record<string, unknown> | null;
-  }
-}
 
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "school-secret-key-2024";
 
@@ -41,27 +35,27 @@ app.use(cookieParser(SESSION_SECRET));
 
 const sessions: Record<string, Record<string, unknown>> = {};
 
-app.use((req, _res, next) => {
-  const sid = req.signedCookies?.["sid"];
+app.use((req: Request, _res: Response, next: NextFunction) => {
+  const sid = (req as any).signedCookies?.["sid"];
   if (sid && sessions[sid]) {
-    req.session = sessions[sid];
+    (req as any).session = sessions[sid];
   } else {
-    req.session = null;
+    (req as any).session = null;
   }
   next();
 });
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const originalJson = res.json.bind(res);
   res.json = function (body) {
-    if (req.session !== null) {
-      if (!req.signedCookies?.["sid"]) {
+    if ((req as any).session !== null) {
+      if (!(req as any).signedCookies?.["sid"]) {
         const sid = Math.random().toString(36).slice(2) + Date.now().toString(36);
-        sessions[sid] = req.session ?? {};
+        sessions[sid] = (req as any).session ?? {};
         res.cookie("sid", sid, { signed: true, httpOnly: true, sameSite: "lax" });
       } else {
-        const sid = req.signedCookies["sid"];
-        sessions[sid] = req.session ?? {};
+        const sid = (req as any).signedCookies["sid"];
+        sessions[sid] = (req as any).session ?? {};
       }
     }
     return originalJson(body);

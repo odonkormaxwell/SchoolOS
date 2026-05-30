@@ -22,7 +22,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
     res.status(401).json({ error: "Invalid username or password" });
     return;
   }
-  req.session = { userId: user.id };
+  (req as any).session = { userId: user.id };
   res.json(LoginResponse.parse({
     id: user.id,
     username: user.username,
@@ -39,7 +39,7 @@ router.post("/auth/logout", async (req, res): Promise<void> => {
 });
 
 router.get("/auth/me", async (req, res): Promise<void> => {
-  const userId = (req.session as any)?.userId;
+  const userId = (req as any).session?.userId;
   if (!userId) {
     res.status(401).json({ error: "Not authenticated" });
     return;

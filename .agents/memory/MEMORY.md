@@ -1,0 +1,3 @@
+- [Drizzle-Zod date mismatch](drizzle-zod-dates.md) — text() columns need explicit .toISOString().split('T')[0] conversion before DB writes; use `as any` for Zod .parse() on Drizzle results
+- [Express session typing](express-session-typing.md) — req.session is not on Express Request type; always use `(req as any).session` — never `(req.session as any)`
+- [Student RBAC pattern](student-rbac.md) — students/parents have all permissions set to none(); redirected to /my-portal; backend currentUser() helper enforces data isolation per route
