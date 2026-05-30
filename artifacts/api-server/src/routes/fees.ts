@@ -216,7 +216,11 @@ router.post("/payments", async (req, res): Promise<void> => {
     return;
   }
   const receiptNumber = await generateReceiptNumber();
-  const [payment] = await db.insert(paymentsTable).values({ ...parsed.data, receiptNumber }).returning();
+  const [payment] = await db.insert(paymentsTable).values({
+    ...parsed.data,
+    receiptNumber,
+    paymentDate: parsed.data.paymentDate.toISOString().split("T")[0],
+  }).returning();
   res.status(201).json({ ...payment, studentName: null, className: null, feeTypeName: null, termName: null, collectedBy: null });
 });
 

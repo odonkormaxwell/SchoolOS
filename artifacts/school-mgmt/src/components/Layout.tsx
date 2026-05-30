@@ -19,6 +19,7 @@ import {
   Menu,
   X,
   Shield,
+  LayoutGrid,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -54,7 +55,28 @@ export default function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const visibleNav = navItems.filter((item) => can(item.module));
+  const isStudentOrParent = user?.role === "student" || user?.role === "parent";
+  const visibleNav = isStudentOrParent ? [] : navItems.filter((item) => can(item.module));
+
+  const NavLink = ({ href, icon: Icon, label }: { href: string; icon: React.ComponentType<any>; label: string }) => {
+    const active = location === href || location.startsWith(href + "/");
+    return (
+      <Link href={href}>
+        <span
+          onClick={() => setMobileOpen(false)}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all cursor-pointer",
+            active
+              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+              : "text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          )}
+        >
+          <Icon className="h-4 w-4 flex-shrink-0" />
+          {label}
+        </span>
+      </Link>
+    );
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -93,26 +115,15 @@ export default function Layout({ children }: LayoutProps) {
         {/* Nav */}
         <ScrollArea className="flex-1 py-3">
           <nav className="space-y-0.5 px-2">
-            {visibleNav.map((item) => {
-              const Icon = item.icon;
-              const active = location === item.href || location.startsWith(item.href + "/");
-              return (
-                <Link key={item.href} href={item.href}>
-                  <span
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all cursor-pointer",
-                      active
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                        : "text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-                    )}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
+            {isStudentOrParent ? (
+              <>
+                <NavLink href="/my-portal" icon={LayoutGrid} label="My Portal" />
+              </>
+            ) : (
+              visibleNav.map((item) => (
+                <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
+              ))
+            )}
           </nav>
         </ScrollArea>
 

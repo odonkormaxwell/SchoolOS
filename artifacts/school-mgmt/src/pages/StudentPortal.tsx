@@ -337,51 +337,81 @@ export default function StudentPortal() {
                 <div className="space-y-2">
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
                 </div>
-              ) : balances.length === 0 ? (
-                <div className="text-center py-12">
-                  <DollarSign className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-30" />
-                  <p className="text-sm text-muted-foreground">No fee records found</p>
-                </div>
               ) : (
-                <>
-                  <div className={`p-4 rounded-xl mb-4 ${totalOwed > 0 ? "bg-rose-50 border border-rose-200" : "bg-emerald-50 border border-emerald-200"}`}>
-                    <p className="text-xs font-medium text-muted-foreground">Total Outstanding</p>
+                <div className="space-y-4">
+                  {/* Summary banner */}
+                  <div className={`p-4 rounded-xl ${totalOwed > 0 ? "bg-rose-50 border border-rose-200" : "bg-emerald-50 border border-emerald-200"}`}>
+                    <p className="text-xs font-medium text-muted-foreground">Total Outstanding Balance</p>
                     <p className={`text-2xl font-bold ${totalOwed > 0 ? "text-rose-600" : "text-emerald-600"}`}>
                       {formatCurrency(totalOwed)}
                     </p>
-                    {totalOwed === 0 && <p className="text-xs text-emerald-600 mt-0.5">All fees cleared</p>}
+                    {totalOwed === 0
+                      ? <p className="text-xs text-emerald-600 mt-0.5 font-medium">✓ All fees fully paid — you're up to date!</p>
+                      : <p className="text-xs text-rose-500 mt-0.5">Visit the school bursar's office to make payment</p>
+                    }
                   </div>
-                  <div className="space-y-2">
-                    {balances.map((b, i) => (
-                      <div key={i} className="p-3 rounded-xl border bg-card">
-                        <div className="flex items-start justify-between mb-1">
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">{b.feeTypeName}</p>
-                            <p className="text-xs text-muted-foreground">Term ID: {b.termId}</p>
+
+                  {/* How to pay */}
+                  {totalOwed > 0 && (
+                    <div className="rounded-xl border bg-blue-50 border-blue-200 p-4">
+                      <p className="text-xs font-bold text-blue-800 uppercase tracking-wide mb-2">How to Pay Your Fees</p>
+                      <ol className="space-y-1.5">
+                        {[
+                          "Visit the school's Accounts / Bursar's Office",
+                          "Provide your Student ID and the fee you are paying for",
+                          "Make payment in cash or via approved mobile money (MTN / Telecel / AirtelTigo)",
+                          "Collect your official receipt — keep it safe",
+                          "Your balance here will update once the accountant records the payment",
+                        ].map((step, i) => (
+                          <li key={i} className="flex gap-2 text-xs text-blue-700">
+                            <span className="font-bold text-blue-500 flex-shrink-0">{i + 1}.</span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {/* Fee breakdown */}
+                  {balances.length === 0 ? (
+                    <div className="text-center py-8">
+                      <DollarSign className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-30" />
+                      <p className="text-sm text-muted-foreground">No fee records found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Fee Breakdown</p>
+                      {balances.map((b, i) => (
+                        <div key={i} className="p-3 rounded-xl border bg-card">
+                          <div className="flex items-start justify-between mb-1">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">{b.feeTypeName ?? "Fee"}</p>
+                              {b.termId && <p className="text-xs text-muted-foreground">{terms.find(t => t.id === b.termId)?.name ?? `Term ${b.termId}`}</p>}
+                            </div>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              b.status === "paid" ? "bg-emerald-100 text-emerald-700" :
+                              b.status === "partial" ? "bg-yellow-100 text-yellow-700" :
+                              "bg-red-100 text-red-700"
+                            }`}>{b.status?.toUpperCase()}</span>
                           </div>
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            b.status === "paid" ? "bg-emerald-100 text-emerald-700" :
-                            b.status === "partial" ? "bg-yellow-100 text-yellow-700" :
-                            "bg-red-100 text-red-700"
-                          }`}>{b.status}</span>
-                        </div>
-                        <div className="flex gap-3 text-xs mt-2">
-                          <span className="text-muted-foreground">Fee: <b className="text-foreground">{formatCurrency(b.totalFee)}</b></span>
-                          <span className="text-muted-foreground">Paid: <b className="text-emerald-600">{formatCurrency(b.totalPaid)}</b></span>
-                          <span className="text-muted-foreground">Bal: <b className={b.balance > 0 ? "text-rose-600" : "text-emerald-600"}>{formatCurrency(b.balance)}</b></span>
-                        </div>
-                        {b.totalFee > 0 && (
-                          <div className="mt-2 h-1.5 rounded-full bg-gray-200">
-                            <div
-                              className="h-1.5 rounded-full bg-emerald-500 transition-all"
-                              style={{ width: `${Math.min(100, (b.totalPaid / b.totalFee) * 100)}%` }}
-                            />
+                          <div className="flex gap-3 text-xs mt-2 flex-wrap">
+                            <span className="text-muted-foreground">Required: <b className="text-foreground">{formatCurrency(b.totalFee)}</b></span>
+                            <span className="text-muted-foreground">Paid: <b className="text-emerald-600">{formatCurrency(b.totalPaid)}</b></span>
+                            <span className="text-muted-foreground">Balance: <b className={b.balance > 0 ? "text-rose-600" : "text-emerald-600"}>{formatCurrency(b.balance)}</b></span>
                           </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </>
+                          {b.totalFee > 0 && (
+                            <div className="mt-2 h-1.5 rounded-full bg-gray-200">
+                              <div
+                                className="h-1.5 rounded-full bg-emerald-500 transition-all"
+                                style={{ width: `${Math.min(100, (b.totalPaid / b.totalFee) * 100)}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </TabsContent>
 

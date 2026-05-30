@@ -98,7 +98,8 @@ router.post("/attendance", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const { classId, date, termId, records } = parsed.data;
+  const { classId, termId, records } = parsed.data;
+  const date = parsed.data.date.toISOString().split("T")[0];
 
   if (role === "teacher" && teacherId) {
     const classIds = await getTeacherClassIds(teacherId);
@@ -180,7 +181,7 @@ router.get("/attendance/summary", async (req, res): Promise<void> => {
       };
     });
 
-  res.json(GetAttendanceSummaryResponse.parse(result));
+  res.json(GetAttendanceSummaryResponse.parse(result as any));
 });
 
 router.get("/results", async (req, res): Promise<void> => {

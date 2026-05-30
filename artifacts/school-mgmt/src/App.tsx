@@ -69,6 +69,9 @@ function ProtectedRoute({
   if (!user) return <Redirect to="/login" />;
 
   if (module && !can(module)) {
+    if (user.role === "student" || user.role === "parent") {
+      return <Redirect to="/my-portal" />;
+    }
     return (
       <Layout>
         <AccessDenied />
@@ -127,6 +130,7 @@ function Router() {
       <Route path="/reports" component={() => <ProtectedRoute component={Reports} module="reports" />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} module="settings" />} />
       <Route path="/" component={() => <Redirect to="/dashboard" />} />
+      <Route component={() => <Redirect to="/dashboard" />} />
     </Switch>
   );
 }

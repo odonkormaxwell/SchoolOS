@@ -118,8 +118,13 @@ router.post("/teachers", async (req, res): Promise<void> => {
     return;
   }
   const staffId = await getNextTeacherStaffId();
-  const [teacher] = await db.insert(teachersTable).values({ ...parsed.data, staffId, status: parsed.data.status ?? "active" }).returning();
-  res.status(201).json(GetTeacherResponse.parse(teacher));
+  const [teacher] = await db.insert(teachersTable).values({
+    ...parsed.data,
+    staffId,
+    status: parsed.data.status ?? "active",
+    hireDate: parsed.data.hireDate ? parsed.data.hireDate.toISOString().split("T")[0] : undefined,
+  }).returning();
+  res.status(201).json(GetTeacherResponse.parse(teacher as any));
 });
 
 router.get("/teachers/:id", async (req, res): Promise<void> => {
@@ -161,7 +166,10 @@ router.put("/teachers/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [teacher] = await db.update(teachersTable).set(parsed.data).where(eq(teachersTable.id, params.data.id)).returning();
+  const [teacher] = await db.update(teachersTable).set({
+    ...parsed.data,
+    hireDate: parsed.data.hireDate ? parsed.data.hireDate.toISOString().split("T")[0] : undefined,
+  }).where(eq(teachersTable.id, params.data.id)).returning();
   if (!teacher) {
     res.status(404).json({ error: "Teacher not found" });
     return;
@@ -242,8 +250,10 @@ router.post("/students", async (req, res): Promise<void> => {
     ...parsed.data,
     studentId,
     status: parsed.data.status ?? "active",
+    admissionDate: parsed.data.admissionDate.toISOString().split("T")[0],
+    dateOfBirth: parsed.data.dateOfBirth ? parsed.data.dateOfBirth.toISOString().split("T")[0] : undefined,
   }).returning();
-  res.status(201).json(GetStudentResponse.parse({ ...student, className: null }));
+  res.status(201).json(GetStudentResponse.parse({ ...student, className: null } as any));
 });
 
 router.get("/students/:id", async (req, res): Promise<void> => {
@@ -297,7 +307,11 @@ router.put("/students/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [student] = await db.update(studentsTable).set(parsed.data).where(eq(studentsTable.id, params.data.id)).returning();
+  const [student] = await db.update(studentsTable).set({
+    ...parsed.data,
+    admissionDate: parsed.data.admissionDate ? parsed.data.admissionDate.toISOString().split("T")[0] : undefined,
+    dateOfBirth: parsed.data.dateOfBirth ? parsed.data.dateOfBirth.toISOString().split("T")[0] : undefined,
+  }).where(eq(studentsTable.id, params.data.id)).returning();
   if (!student) {
     res.status(404).json({ error: "Student not found" });
     return;
